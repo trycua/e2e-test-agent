@@ -178,6 +178,18 @@ def workspace_permission_hook(root: Path):
     return guard
 
 
+def agent_system_prompt() -> dict[str, str]:
+    prompt = {"type": "preset", "preset": "claude_code"}
+    extra = env("E2E_SYSTEM_PROMPT")
+    if extra:
+        with Path(extra).open("rb") as source:
+            content = source.read(128 * 1024 + 1)
+        if len(content) > 128 * 1024:
+            raise ValueError("System prompt exceeds the 128 KiB limit")
+        prompt["append"] = content.decode("utf-8")
+    return prompt
+
+
 async def run_agent(
     *,
     prompt: str,
@@ -233,7 +245,7 @@ async def run_agent(
         sandbox=sandbox,
         setting_sources=[],
         strict_mcp_config=bool(mcp_servers),
-        system_prompt={"type": "preset", "preset": "claude_code"},
+        system_prompt=agent_system_prompt(),
         tools=tools or ["Read", "Glob", "Grep", "Write"],
     )
     result: ResultMessage | None = None

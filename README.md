@@ -146,3 +146,11 @@ Mocked unit tests are not evidence of a successful real sandbox run.
 
 Licensed under the Apache License, Version 2.0. See `LICENSE` for the full terms.
 Read `SECURITY.md` before enabling the workflow.
+
+### Optional system prompt
+
+Use `system-prompt` to pass a trusted absolute path to a UTF-8 file (up to
+128 KiB). Its contents are appended to the default Claude Code system prompt
+for planning and execution, not video editing. Omit it to retain the default.
+Keep repository-specific instructions in your own repository; the action does
+not interpret them or configure your environment. Do not include credentials.

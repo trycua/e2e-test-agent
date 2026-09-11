@@ -31,6 +31,15 @@ class ActionTests(unittest.TestCase):
     def runner(self):
         return run_action.Runner(run_action.Config(self.env), self.env)
 
+    def test_system_prompt_is_only_forwarded_to_planning_and_execution(self):
+        self.env['E2E_SYSTEM_PROMPT'] = '/trusted/custom-system.md'
+        runner = self.runner()
+        for phase in ('plan', 'execute'):
+            self.assertEqual(runner.command_env(phase)['E2E_SYSTEM_PROMPT'],
+                             '/trusted/custom-system.md')
+        for phase in ('pr-context', 'claim-create', 'edit-video'):
+            self.assertNotIn('E2E_SYSTEM_PROMPT', runner.command_env(phase))
+
     def test_required_configuration_fails_before_running(self):
         for key in ('E2E_REPOSITORY', 'PR_NUMBER', 'HEAD_SHA', 'E2E_POOL',
                     'GH_TOKEN', 'CUA_CLIENT_ID', 'CUA_CLIENT_SECRET', 'ANTHROPIC_API_KEY',

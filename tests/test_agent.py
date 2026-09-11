@@ -46,6 +46,28 @@ class E2ETestAgentTests(unittest.TestCase):
     def setUp(self) -> None:
         self.agent = load_agent_module()
 
+    def test_custom_text_is_appended_to_system_prompt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            context = Path(directory) / 'custom-system.md'
+            context.write_text('Three nspawn nodes and local Keycloak.')
+            with mock.patch.dict('os.environ', {'E2E_SYSTEM_PROMPT': str(context)}):
+                prompt = self.agent.agent_system_prompt()
+        self.assertEqual(prompt['preset'], 'claude_code')
+        self.assertIn('Three nspawn nodes and local Keycloak.', prompt['append'])
+
+    def test_default_system_prompt_is_unchanged(self):
+        with mock.patch.dict('os.environ', {}, clear=True):
+            self.assertEqual(self.agent.agent_system_prompt(),
+                             {'type': 'preset', 'preset': 'claude_code'})
+
+    def test_system_prompt_rejects_oversized_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            context = Path(directory) / 'large.md'
+            context.write_bytes(b'x' * (128 * 1024 + 1))
+            with mock.patch.dict('os.environ', {'E2E_SYSTEM_PROMPT': str(context)}):
+                with self.assertRaises(ValueError):
+                    self.agent.agent_system_prompt()
+
     def test_renders_all_prompt_tokens(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             prompt = Path(directory) / "prompt.md"
