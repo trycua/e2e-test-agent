@@ -28,6 +28,18 @@
         let pkgs = import nixpkgs { inherit system; };
         in {
           package = self.packages.${system}.default;
+          sdk-contract = pkgs.runCommand "e2e-test-agent-sdk-contract" {
+            nativeBuildInputs = [ self.packages.${system}.default.pythonEnvironment ];
+          } ''
+            export HOME="$TMPDIR/home"
+            export E2E_FLEET_SDK_CONTRACT=1
+            mkdir -p "$HOME"
+            cp -R ${./.} source
+            chmod -R u+w source
+            cd source
+            python3 -m unittest discover -s tests -p test_claim_sdk_contract.py -v
+            touch "$out"
+          '';
           workflow = pkgs.runCommand "e2e-test-agent-workflows" {
             nativeBuildInputs = [ pkgs.actionlint ];
           } ''

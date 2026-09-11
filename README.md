@@ -15,7 +15,9 @@ supplying secrets.
 ## Requirements
 
 - Linux GitHub-hosted runner; one agent invocation at a time per runner.
-- Nix with flakes enabled. The flake pins nixpkgs and Claude Agent SDK dependencies.
+- Nix with flakes enabled. The flake pins nixpkgs, Claude Agent SDK, and Cua Fleet SDK dependencies.
+- Direct network access to the Cua API and token endpoint. The native Fleet SDK
+  transport does not use `HTTP_PROXY`/`HTTPS_PROXY` environment variables.
 - An existing Cua desktop pool accessible using your Cua client credentials.
   The sandbox must expose cua-driver MCP, computer-server, and a shell, with
   Chromium, a visible X11 desktop, Git, and tar available.
@@ -26,6 +28,37 @@ supplying secrets.
 
 The project does not grant access to a shared sandbox pool or model gateway and
 does not provision infrastructure. Sandbox and model usage can incur charges.
+
+## Claim waiting
+
+The action delegates claim waiting to the Fleet UniFFI SDK's `wait_claim` method;
+it does not implement a second polling/retry protocol. The `claim-wait` CLI still
+prints only the bound sandbox name on success, returns a nonzero exit code on
+failure, and enforces its `--timeout` as a wall-clock bound. Creation, release,
+and the runner's unconditional cleanup remain unchanged. The identity handle
+passed to the SDK uses the claim's pool/name; the SDK reads the actual claim and
+template from the server before returning the bound sandbox. Keep that template
+available and grant the credential read access: a missing or unreadable template
+is an SDK error even if the claim already has a bound sandbox name.
+
+**Release dependency:** the pinned public Fleet SDK wheel is currently 0.1.17.
+Before deploying an operator that fails capacity attempts immediately with
+`NoAvailableSandbox`, update the two wheel pins in `nix/default.nix` to a public
+SDK release containing SDK-owned capacity retries. The adapter is compatible
+with that implementation without further call-site changes. Until that release
+is pinned, this branch is only ready for operators that retain server-side
+capacity waiting. Do not promote it as supporting the new operator yet.
+The `sdk-contract` flake check deliberately enforces this release gate: it must
+pass against the packaged native SDK before this update is promoted. It currently
+fails with 0.1.17 because that SDK does not retry capacity failures.
+
+To exercise the same contract with an installed candidate SDK (no live pool or
+credentials required):
+
+```bash
+E2E_FLEET_SDK_CONTRACT=1 python3 -m unittest discover -s tests \
+  -p test_claim_sdk_contract.py -v
+```
 
 ## GitHub Actions
 

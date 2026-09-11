@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import asyncio
 import dataclasses
 import functools
 import json
@@ -684,20 +685,45 @@ def cmd_claim_create(args) -> int:
 
 
 def cmd_claim_wait(args) -> int:
-    deadline = time.time() + args.timeout
-    while time.time() < deadline:
-        with api_request("GET", claims_path(args.pool, args.name)) as resp:
-            status = json.loads(resp.read()).get("status") or {}
-        phase = status.get("phase", "Pending")
-        if phase == "Bound" and (status.get("sandbox") or {}).get("name"):
-            print(status["sandbox"]["name"])
-            return 0
-        if phase in ("Failed", "Error", "Expired"):
-            log(f"claim entered terminal phase {phase}: {json.dumps(status)[:2000]}")
-            return 1
-        time.sleep(5)
-    log(f"claim {args.name} not Bound after {args.timeout}s")
-    return 1
+    if args.timeout <= 0:
+        log(f"claim {args.name} not Bound after {args.timeout}s")
+        return 1
+
+    from fleet_sdk import (
+        Claim, ClaimSpec, CyclopsClient, CyclopsConfiguration, CyclopsCredentials,
+        ResourceMetadata, SandboxTemplateRef, SdkError,
+    )
+
+    async def wait():
+        client = CyclopsClient.connect_with_native_http_client(CyclopsConfiguration(
+            base_url=base_url(),
+            token_url=os.environ.get("CUA_TOKEN_URL", DEFAULT_TOKEN_URL),
+            credentials=CyclopsCredentials(os.environ["CUA_CLIENT_ID"], os.environ["CUA_CLIENT_SECRET"]),
+            pool_poll_interval_ms=5000,
+            pool_poll_limit=1,
+            claim_poll_interval_ms=5000,
+            claim_poll_limit=max(1, int(args.timeout // 5) + 1),
+        ))
+        claim = Claim(
+            api_version=f"{CLAIM_GROUP}/{CLAIM_VERSION}", kind="OSGymSandboxClaim",
+            metadata=ResourceMetadata(namespace=args.pool, name=args.name,
+                                      labels=None, creation_timestamp=None),
+            spec=ClaimSpec(sandbox_template_ref=SandboxTemplateRef(name=f"{args.pool}-template"),
+                           warmpool=None, bind_deadline=None, lifecycle=None),
+            status=None,
+        )
+        return await asyncio.wait_for(client.wait_claim(claim), timeout=args.timeout)
+
+    try:
+        sandbox = asyncio.run(wait())
+    except (TimeoutError, SdkError.ClaimTimeout):
+        log(f"claim {args.name} not Bound after {args.timeout}s")
+        return 1
+    except SdkError.ClaimFailed as err:
+        log(f"claim entered terminal phase {err.phase}: {str(err.status)[:2000]}")
+        return 1
+    print(sandbox.name)
+    return 0
 
 
 def cmd_claim_delete(args) -> int:
