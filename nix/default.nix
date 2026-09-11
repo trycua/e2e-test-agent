@@ -42,7 +42,28 @@ let
     doCheck = false;
     pythonImportsCheck = [ "claude_agent_sdk" ];
   };
-  python = pkgs.python3.withPackages (_: [ claudeAgentSdk ]);
+  fleetWheelBySystem = {
+    x86_64-linux = {
+      url = "https://wheels.cua.ai/simple/cua-fleet/cua_fleet-0.1.17-py3-none-manylinux_2_34_x86_64.whl";
+      hash = "sha256-TNvInoUNhBSBcTq/Hov5cZsuM7PDHya76l9j4erTxsA=";
+    };
+    aarch64-linux = {
+      url = "https://wheels.cua.ai/simple/cua-fleet/cua_fleet-0.1.17-py3-none-manylinux_2_34_aarch64.whl";
+      hash = "sha256-vaSSmMd8Zes0noQg+SN/a3+y/SUgN0ffmKlRO5j9XXM=";
+    };
+  };
+  fleetSdk = pythonPackages.buildPythonPackage {
+    pname = "cua-fleet";
+    version = "0.1.17";
+    format = "wheel";
+    src = pkgs.fetchurl fleetWheelBySystem.${system};
+    nativeBuildInputs = [ pkgs.autoPatchelfHook ];
+    buildInputs = [ pkgs.stdenv.cc.cc.lib ];
+    dontStrip = true;
+    doCheck = false;
+    pythonImportsCheck = [ "fleet_sdk" ];
+  };
+  python = pkgs.python3.withPackages (_: [ claudeAgentSdk fleetSdk ]);
   cli = pkgs.writeShellApplication {
     name = "e2e-test-agent";
     runtimeInputs = [ python pkgs.ffmpeg pkgs.mlt pkgs.ripgrep pkgs.git pkgs.gh pkgs.gnutar ]
@@ -66,4 +87,5 @@ in
 pkgs.symlinkJoin {
   name = "e2e-test-agent";
   paths = [ cli runner ];
+  passthru.pythonEnvironment = python;
 }
