@@ -1,0 +1,132 @@
+name: Cua E2E Test Agent
+description: Plan and run one visible application journey for a trusted PR in a disposable Cua sandbox.
+inputs:
+  repository:
+    description: Target repository in owner/name form.
+    required: true
+    default: ${{ github.repository }}
+  pr-number:
+    description: Same-repository pull request number.
+    required: true
+  head-sha:
+    description: Exact PR head commit checked out in repo-path.
+    required: true
+  repo-path:
+    description: Absolute path to the target checkout, separate from the action code.
+    required: true
+  github-token:
+    description: Token with read access to target repository contents and pull requests.
+    required: true
+    default: ${{ github.token }}
+  model:
+    description: Model identifier accepted by the Claude Agent SDK endpoint.
+    required: true
+  anthropic-api-key:
+    description: API key for Anthropic or an Anthropic-compatible endpoint.
+    required: true
+  anthropic-base-url:
+    description: Optional compatible API endpoint; empty uses the SDK default.
+    default: ''
+  cua-client-id:
+    description: Cua OAuth client ID with access to the selected pool.
+    required: true
+  cua-client-secret:
+    description: Cua OAuth client secret.
+    required: true
+  cua-base-url:
+    description: Cua API endpoint.
+    default: https://run.cua.ai
+  cua-token-url:
+    description: Optional Cua OAuth token endpoint; empty uses the CLI default.
+    default: ''
+  pool:
+    description: Cua pool accessible to the supplied credentials.
+    required: true
+  planning-prompt:
+    description: Optional trusted absolute path overriding the planning prompt.
+    default: ''
+  execution-prompt:
+    description: Optional trusted absolute path overriding the execution prompt.
+    default: ''
+  video-editing-prompt:
+    description: Optional trusted absolute path overriding the video editing prompt.
+    default: ''
+  edit-video:
+    description: Enable the optional model-assisted video editing phase (true or false).
+    default: 'false'
+  artifact-name:
+    description: Artifact name; use a unique name for each invocation in a workflow run.
+    default: e2e-test-${{ github.job }}-${{ github.run_attempt }}
+outputs:
+  status:
+    description: pass, fail, or error (configuration, execution, or cleanup failure).
+    value: ${{ steps.run.outputs.status }}
+  results-dir:
+    description: Local directory containing reports and recordings.
+    value: ${{ steps.run.outputs.results-dir }}
+  artifact-url:
+    description: Workflow artifact URL; repository access may be required.
+    value: ${{ steps.artifact.outputs.artifact-url }}
+runs:
+  using: composite
+  steps:
+    - name: Build pinned agent package
+      id: package
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        set -euo pipefail
+        command -v nix >/dev/null || { echo 'Install Nix with flakes enabled before using this action.' >&2; exit 1; }
+        WORK_DIR="$(mktemp -d "$RUNNER_TEMP/e2e-test-agent.XXXXXXXX")"
+        echo "work-dir=$WORK_DIR" >> "$GITHUB_OUTPUT"
+        nix build --no-update-lock-file "path:$ACTION_PATH#default" --out-link "$WORK_DIR/package"
+    - name: Run E2E journey
+      id: run
+      shell: bash
+      env:
+        E2E_WORK_DIR: ${{ steps.package.outputs.work-dir }}
+        E2E_REPOSITORY: ${{ inputs.repository }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+        HEAD_SHA: ${{ inputs.head-sha }}
+        E2E_REPO_DIR: ${{ inputs.repo-path }}
+        GH_TOKEN: ${{ inputs.github-token }}
+        ANTHROPIC_MODEL: ${{ inputs.model }}
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        ANTHROPIC_BASE_URL: ${{ inputs.anthropic-base-url }}
+        CUA_CLIENT_ID: ${{ inputs.cua-client-id }}
+        CUA_CLIENT_SECRET: ${{ inputs.cua-client-secret }}
+        CUA_BASE_URL: ${{ inputs.cua-base-url }}
+        CUA_TOKEN_URL: ${{ inputs.cua-token-url }}
+        E2E_POOL: ${{ inputs.pool }}
+        E2E_PLANNING_PROMPT: ${{ inputs.planning-prompt }}
+        E2E_EXECUTION_PROMPT: ${{ inputs.execution-prompt }}
+        E2E_VIDEO_EDITING_PROMPT: ${{ inputs.video-editing-prompt }}
+        E2E_EDIT_VIDEO: ${{ inputs.edit-video }}
+      run: '"$E2E_WORK_DIR/package/bin/e2e-test-agent-action"'
+    - name: Upload reports and recordings
+      id: artifact
+      if: ${{ always() && steps.run.outputs.results-dir != '' }}
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: |
+          ${{ steps.run.outputs.results-dir }}/e2e-plan.md
+          ${{ steps.run.outputs.results-dir }}/e2e-report.md
+          ${{ steps.run.outputs.results-dir }}/e2e-result.json
+          ${{ steps.run.outputs.results-dir }}/runner-status.json
+          ${{ steps.run.outputs.results-dir }}/runner-error.txt
+          ${{ steps.run.outputs.results-dir }}/e2e-video.mp4
+          ${{ steps.run.outputs.results-dir }}/e2e-video-edited.mp4
+        if-no-files-found: error
+        retention-days: 7
+    - name: Enforce result
+      if: ${{ always() }}
+      shell: bash
+      env:
+        E2E_STATUS: ${{ steps.run.outputs.status }}
+      run: |
+        if [ "$E2E_STATUS" != pass ]; then
+          echo 'The E2E journey did not pass. Inspect the report artifacts.' >&2
+          exit 1
+        fi

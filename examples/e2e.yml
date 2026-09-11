@@ -1,0 +1,41 @@
+# Before enabling secrets, replace the agent's main ref with a reviewed full commit SHA.
+name: E2E Test Agent
+on:
+  pull_request:
+    types: [labeled]
+permissions:
+  contents: read
+  pull-requests: read
+concurrency:
+  group: e2e-test-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+jobs:
+  e2e:
+    if: >-
+      github.event.label.name == 'e2e-test' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-22.04
+    timeout-minutes: 100
+    steps:
+      - name: Checkout reviewed PR head
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: target
+          persist-credentials: false
+      - uses: cachix/install-nix-action@08dcb3a5e62fa31e2da3d490afc4176ef55ecd72
+      - name: Run visible E2E journey
+        id: e2e
+        uses: trycua/e2e-test-agent@main
+        with:
+          repository: ${{ github.repository }}
+          pr-number: ${{ github.event.pull_request.number }}
+          head-sha: ${{ github.event.pull_request.head.sha }}
+          repo-path: ${{ github.workspace }}/target
+          github-token: ${{ github.token }}
+          model: ${{ vars.E2E_MODEL }}
+          anthropic-api-key: ${{ secrets.E2E_MODEL_API_KEY }}
+          anthropic-base-url: ${{ vars.E2E_MODEL_BASE_URL }}
+          cua-client-id: ${{ secrets.CUA_CLIENT_ID }}
+          cua-client-secret: ${{ secrets.CUA_CLIENT_SECRET }}
+          pool: ${{ vars.CUA_E2E_POOL }}
