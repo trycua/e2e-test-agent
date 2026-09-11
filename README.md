@@ -117,7 +117,12 @@ above; video editing uses `E2E_EDIT_VIDEO=true`. Phase model overrides use
 
 The runner separates model credentials from GitHub/Cua credentials in child
 processes and uses an isolated home directory. It does not forward arbitrary
-runner environment variables to the agent. Lower-level CLI commands can be used
+runner environment variables to the agent. Callers may explicitly set
+`CLAUDE_CODE_EFFORT_LEVEL` and opt into SDK metrics using
+`CLAUDE_CODE_ENABLE_TELEMETRY`, `OTEL_METRICS_EXPORTER`,
+`OTEL_EXPORTER_OTLP_PROTOCOL`, and `OTEL_EXPORTER_OTLP_ENDPOINT`. Only model phases
+receive those settings; no collector is configured by this project.
+Lower-level CLI commands can be used
 for individual phases; `--help` describes their arguments. Command defaults find
 bundled prompts without requiring exported prompt paths.
 

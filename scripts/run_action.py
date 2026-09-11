@@ -140,7 +140,9 @@ class Runner:
         environment.update(self.metadata)
         if phase in ('plan', 'execute', 'edit-video'):
             names = ('ANTHROPIC_API_KEY', 'ANTHROPIC_BASE_URL', 'ANTHROPIC_MODEL',
-                     'E2E_PLANNING_PROMPT', 'E2E_EXECUTION_PROMPT', 'E2E_VIDEO_EDITING_PROMPT')
+                     'E2E_PLANNING_PROMPT', 'E2E_EXECUTION_PROMPT', 'E2E_VIDEO_EDITING_PROMPT',
+                     'CLAUDE_CODE_EFFORT_LEVEL', 'CLAUDE_CODE_ENABLE_TELEMETRY',
+                     'OTEL_METRICS_EXPORTER', 'OTEL_EXPORTER_OTLP_PROTOCOL', 'OTEL_EXPORTER_OTLP_ENDPOINT')
         elif phase == 'pr-context':
             names = ('GH_TOKEN',)
         else:

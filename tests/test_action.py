@@ -65,6 +65,20 @@ class ActionTests(unittest.TestCase):
         self.assertEqual(runner.command_env('execute')['ANTHROPIC_MODEL'], 'test-model')
         self.assertEqual(runner.command_env('edit-video')['ANTHROPIC_MODEL'], 'editor')
 
+    def test_explicit_sdk_effort_and_metrics_settings_reach_only_model_phases(self):
+        settings = {
+            'CLAUDE_CODE_EFFORT_LEVEL': 'medium', 'CLAUDE_CODE_ENABLE_TELEMETRY': '1',
+            'OTEL_METRICS_EXPORTER': 'otlp', 'OTEL_EXPORTER_OTLP_PROTOCOL': 'http/protobuf',
+            'OTEL_EXPORTER_OTLP_ENDPOINT': 'https://metrics.example',
+        }
+        self.env.update(settings)
+        runner = self.runner()
+        for phase in ('plan', 'execute', 'edit-video'):
+            for name, value in settings.items():
+                self.assertEqual(runner.command_env(phase).get(name), value)
+        for name in settings:
+            self.assertNotIn(name, runner.command_env('pr-context'))
+
     def test_snapshot_excludes_secrets_symlinks_and_untracked_files(self):
         subprocess.run(['git', 'init', '-q', str(self.checkout)], check=True)
         (self.checkout / 'app.txt').write_text('application')
