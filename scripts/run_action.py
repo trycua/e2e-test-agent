@@ -138,6 +138,8 @@ class Runner:
             'MCP_PROXY_PORT': '3333',
         })
         environment.update(self.metadata)
+        if phase in ('plan', 'execute') and self.environment.get('E2E_SYSTEM_PROMPT'):
+            environment['E2E_SYSTEM_PROMPT'] = self.environment['E2E_SYSTEM_PROMPT']
         if phase in ('plan', 'execute', 'edit-video'):
             names = ('ANTHROPIC_API_KEY', 'ANTHROPIC_BASE_URL', 'ANTHROPIC_MODEL',
                      'E2E_PLANNING_PROMPT', 'E2E_EXECUTION_PROMPT', 'E2E_VIDEO_EDITING_PROMPT',

@@ -48,6 +48,9 @@ inputs:
   pool:
     description: Cua pool accessible to the supplied credentials.
     required: true
+  system-prompt:
+    description: Optional trusted absolute path to UTF-8 text appended to planning and execution system prompts (128 KiB maximum).
+    default: ''
   planning-prompt:
     description: Optional trusted absolute path overriding the planning prompt.
     default: ''
@@ -107,6 +110,7 @@ runs:
         CUA_BASE_URL: ${{ inputs.cua-base-url }}
         CUA_TOKEN_URL: ${{ inputs.cua-token-url }}
         E2E_POOL: ${{ inputs.pool }}
+        E2E_SYSTEM_PROMPT: ${{ inputs.system-prompt }}
         E2E_PLANNING_PROMPT: ${{ inputs.planning-prompt }}
         E2E_EXECUTION_PROMPT: ${{ inputs.execution-prompt }}
         E2E_VIDEO_EDITING_PROMPT: ${{ inputs.video-editing-prompt }}
