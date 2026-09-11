@@ -61,10 +61,12 @@ See `action.yml` for the complete interface. Required inputs are `pr-number`,
 `cua-client-secret`, and `pool`. `repository` and `github-token` default to the
 caller context. `repo-path` must be an absolute path to the target checkout.
 
-Optional inputs include `anthropic-base-url`, `cua-base-url`, `cua-token-url`,
+Optional inputs include `planning-model`, `video-editing-model`,
+`anthropic-base-url`, `cua-base-url`, `cua-token-url`,
 `planning-prompt`, `execution-prompt`, `video-editing-prompt`, and `edit-video`.
 Prompt overrides must be trusted absolute paths. Video editing is disabled by
-default and consumes additional model time when enabled. The default artifact
+default and consumes additional model time when enabled. Phase model overrides
+default to `model` when omitted. The default artifact
 name combines the job name and run attempt; override `artifact-name` when a
 workflow contains multiple invocations or matrix jobs with the same job ID.
 
@@ -110,7 +112,8 @@ Set `E2E_REPOSITORY`, `PR_NUMBER`, `HEAD_SHA`, `E2E_REPO_DIR`, `E2E_WORK_DIR`,
 `E2E_POOL`, `GH_TOKEN`, `ANTHROPIC_MODEL`, `ANTHROPIC_API_KEY`, `CUA_CLIENT_ID`, and
 `CUA_CLIENT_SECRET`. Use a fresh work directory outside the target checkout.
 Optional environment variables mirror the endpoint and prompt inputs listed
-above; video editing uses `E2E_EDIT_VIDEO=true`.
+above; video editing uses `E2E_EDIT_VIDEO=true`. Phase model overrides use
+`E2E_PLANNING_MODEL` and `E2E_VIDEO_EDITING_MODEL`.
 
 The runner separates model credentials from GitHub/Cua credentials in child
 processes and uses an isolated home directory. It does not forward arbitrary

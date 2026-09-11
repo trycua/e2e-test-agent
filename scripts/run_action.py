@@ -148,6 +148,9 @@ class Runner:
         for name in names:
             if self.environment.get(name):
                 environment[name] = self.environment[name]
+        model_override = {'plan': 'E2E_PLANNING_MODEL', 'edit-video': 'E2E_VIDEO_EDITING_MODEL'}.get(phase)
+        if model_override and self.environment.get(model_override):
+            environment['ANTHROPIC_MODEL'] = self.environment[model_override]
         return environment
 
     def call(self, phase, *arguments, input_text=None):

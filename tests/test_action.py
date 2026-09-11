@@ -58,6 +58,13 @@ class ActionTests(unittest.TestCase):
         self.assertEqual(environment['ANTHROPIC_API_KEY'], 'model-secret')
         self.assertNotEqual(environment['HOME'], os.environ.get('HOME'))
 
+    def test_optional_per_phase_models_preserve_execution_default(self):
+        self.env.update({'E2E_PLANNING_MODEL': 'planner', 'E2E_VIDEO_EDITING_MODEL': 'editor'})
+        runner = self.runner()
+        self.assertEqual(runner.command_env('plan')['ANTHROPIC_MODEL'], 'planner')
+        self.assertEqual(runner.command_env('execute')['ANTHROPIC_MODEL'], 'test-model')
+        self.assertEqual(runner.command_env('edit-video')['ANTHROPIC_MODEL'], 'editor')
+
     def test_snapshot_excludes_secrets_symlinks_and_untracked_files(self):
         subprocess.run(['git', 'init', '-q', str(self.checkout)], check=True)
         (self.checkout / 'app.txt').write_text('application')

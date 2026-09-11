@@ -21,6 +21,12 @@ inputs:
   model:
     description: Model identifier accepted by the Claude Agent SDK endpoint.
     required: true
+  planning-model:
+    description: Optional planning model; defaults to model.
+    default: ''
+  video-editing-model:
+    description: Optional video editing model; defaults to model.
+    default: ''
   anthropic-api-key:
     description: API key for Anthropic or an Anthropic-compatible endpoint.
     required: true
@@ -92,6 +98,8 @@ runs:
         E2E_REPO_DIR: ${{ inputs.repo-path }}
         GH_TOKEN: ${{ inputs.github-token }}
         ANTHROPIC_MODEL: ${{ inputs.model }}
+        E2E_PLANNING_MODEL: ${{ inputs.planning-model }}
+        E2E_VIDEO_EDITING_MODEL: ${{ inputs.video-editing-model }}
         ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
         ANTHROPIC_BASE_URL: ${{ inputs.anthropic-base-url }}
         CUA_CLIENT_ID: ${{ inputs.cua-client-id }}
